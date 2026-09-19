@@ -1,8 +1,10 @@
 name: SVT Popmart Monitor
 
 on:
+  # 每 15 分钟运行一次（UTC 时间，对应北京时间每 15 分钟）
   schedule:
     - cron: '*/15 * * * *'
+  # 允许手动触发测试
   workflow_dispatch:
 
 jobs:
@@ -18,7 +20,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
