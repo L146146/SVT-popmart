@@ -1,0 +1,26 @@
+{
+  "keywords": [
+    "SEVENTEEN",
+    "MINITEEN",
+    "세븐틴",
+    "十七"
+  ],
+  "sources": [
+    {
+      "name": "泡泡玛特中国官网",
+      "url": "https://www.popmart.com.cn"
+    },
+    {
+      "name": "泡泡玛特海外新品页",
+      "url": "https://m.popmart.com/mo/new-arrivals"
+    },
+    {
+      "name": "Weverse SEVENTEEN 公告",
+      "url": "https://weverse.io/seventeen/notice"
+    },
+    {
+      "name": "泡泡玛特全球官网",
+      "url": "https://www.popmart.com"
+    }
+  ]
+}
