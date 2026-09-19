@@ -27,20 +27,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Cache monitor state
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: monitor-state-cache
+
       - name: Run monitor script
         env:
           WXPUSHER_APP_TOKEN: ${{ secrets.WXPUSHER_APP_TOKEN }}
           WXPUSHER_UID: ${{ secrets.WXPUSHER_UID }}
         run: python monitor.py
-
-      - name: Commit and push state
-        run: |
-          git config --local user.email "action[bot]@github.com"
-          git config --local user.name "GitHub Action"
-          git add state.json
-          if ! git diff --staged --quiet; then
-            git commit -m "Update monitor state [skip ci]"
-            git push
-          else
-            echo "No state changes to commit"
-          fi
