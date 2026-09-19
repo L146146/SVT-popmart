@@ -1,26 +1,28 @@
 {
-  "mode": "normal",
+  "mode": "preheat",
   "last_results": {
     "泡泡玛特中国官网": {
       "hash": "001b936da487c3ac1462c3bbfce6b6ec",
       "hits": [],
-      "checked_at": "2026-09-19T08:29:29.247922"
+      "checked_at": "2026-09-19T12:30:31.333838"
     },
     "泡泡玛特海外新品页": {
-      "hash": "19be741f618026ac2c479cd439dc74dd",
+      "hash": "3865befdf1255dc31a86471cc623490a",
       "hits": [],
-      "checked_at": "2026-09-19T08:29:29.900441"
+      "checked_at": "2026-09-19T12:30:32.032504"
     },
     "Weverse SEVENTEEN 公告": {
       "hash": "6e3d0295420c6ec9e84d040da76cb4b1",
       "hits": [],
-      "checked_at": "2026-09-19T08:29:30.325235"
+      "checked_at": "2026-09-19T12:30:32.354084"
     },
     "泡泡玛特全球官网": {
-      "hash": "2c61a9daad123d0a41ec3bf4a5848c09",
-      "hits": [],
-      "checked_at": "2026-09-19T08:29:30.456446"
+      "hash": "df9ba07c57636156b1817950373bacac",
+      "hits": [
+        "MINITEEN"
+      ],
+      "checked_at": "2026-09-19T12:30:32.728441"
     }
   },
-  "last_run": "2026-09-19T08:29:30.456526"
+  "last_run": "2026-09-19T12:30:33.520389"
 }
