@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 SEVENTEEN × 泡泡玛特 发售信息监控脚本
-功能：定时抓取目标页面，检测关键词命中，通过 wxpusher 推送微信通知
+功能：定时抓取目标页面，检测关键词新增命中，通过 wxpusher 推送微信通知
 """
 
 import requests
 import json
 import time
-import hashlib
 import os
 import sys
 from datetime import datetime
@@ -18,11 +17,12 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.j
 STATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state.json")
 WXPUSHER_URL = "https://wxpusher.zjiecode.com/api/up/send-message"
 
-# 请求头，模拟浏览器
+# 请求头，模拟手机浏览器（移动端页面更好抓）
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                  "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+                  "Mobile/15E148 Safari/604.1",
+    "Accept-Language": "zh-CN,zh;q=0.9",
 }
 
 
@@ -54,7 +54,6 @@ def fetch_page(url, timeout=30):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
         resp.raise_for_status()
-        # 尝试自动检测编码
         if not resp.encoding or resp.encoding.lower() == "iso-8859-1":
             resp.encoding = resp.apparent_encoding
         return resp.text
@@ -75,23 +74,13 @@ def check_keywords(content, keywords):
     return hits
 
 
-def content_hash(content):
-    """计算内容哈希，用于检测是否有变化"""
-    if not content:
-        return ""
-    return hashlib.md5(content.encode("utf-8")).hexdigest()
-
-
 def send_wxpusher(app_token, uids, title, content, url=None):
-    """
-    通过 wxpusher 推送消息到微信
-    文档: https://wxpusher.zjiecode.com/docs/
-    """
+    """通过 wxpusher 推送消息到微信"""
     payload = {
         "appToken": app_token,
         "content": content,
         "summary": title[:100],
-        "contentType": 3,  # 3 = markdown
+        "contentType": 3,
         "uids": uids,
     }
     if url:
@@ -113,14 +102,16 @@ def send_wxpusher(app_token, uids, title, content, url=None):
 
 def run_one_round(config, state, app_token, uid):
     """执行一轮完整检查"""
-    keywords = config["keywords"]
     sources = config["sources"]
     uids = [uid]
-    new_hits = []
+    new_alerts = []
 
     for source in sources:
         name = source["name"]
         url = source["url"]
+        keywords = source["keywords"]
+        alert_on_first = source.get("alert_on_first_hit", True)
+
         print(f"\n  [CHECK] {name}")
         print(f"          {url}")
 
@@ -128,44 +119,59 @@ def run_one_round(config, state, app_token, uid):
         if not content:
             continue
 
-        hits = check_keywords(content, keywords)
-        chash = content_hash(content)
+        current_hits = check_keywords(content, keywords)
 
         prev = state["last_results"].get(name, {})
-        prev_hash = prev.get("hash", "")
+        prev_hits = prev.get("hits", [])
+        is_first = name not in state["last_results"]
 
-        # 命中关键词，且内容跟上次不同 → 触发推送
-        if hits and chash != prev_hash:
-            new_hits.append({
-                "source": name,
-                "url": url,
-                "hits": hits,
-            })
-            print(f"  🎯 命中: {', '.join(hits)}")
-        elif hits:
-            print(f"  ✓ 已命中，内容未变化（跳过推送）")
+        # 找出新增的关键词（这次命中了，但上次没命中）
+        new_keywords = [kw for kw in current_hits if kw not in prev_hits]
+
+        # 判断是否需要推送
+        should_alert = False
+        alert_reason = ""
+
+        if is_first and not alert_on_first:
+            # 首次运行且不提醒首次命中 → 只记录不推送
+            print(f"  - 首次记录基准，命中: {current_hits if current_hits else '无'}（不推送）")
+        elif new_keywords:
+            # 有新增命中的关键词 → 推送
+            should_alert = True
+            alert_reason = f"新增命中: {', '.join(new_keywords)}"
+            print(f"  🎯 {alert_reason}")
+        elif current_hits:
+            print(f"  ✓ 已命中，无新增关键词（跳过）")
         else:
             print(f"  - 未命中关键词")
 
+        if should_alert:
+            new_alerts.append({
+                "source": name,
+                "url": url,
+                "new_keywords": new_keywords,
+                "all_hits": current_hits,
+            })
+
         # 更新状态
         state["last_results"][name] = {
-            "hash": chash,
-            "hits": hits,
+            "hits": current_hits,
             "checked_at": datetime.now().isoformat(),
         }
 
-    # 有新命中 → 推送
-    if new_hits:
-        title = "🔔 SEVENTEEN × 泡泡玛特 发售信息更新！"
+    # 有新警报 → 推送
+    if new_alerts:
+        title = "🔔 SEVENTEEN × 泡泡玛特 监控警报！"
         parts = []
-        for i, hit in enumerate(new_hits, 1):
-            parts.append(f"### {i}. {hit['source']}")
-            parts.append(f"**命中关键词**: {', '.join(hit['hits'])}")
-            parts.append(f"**链接**: {hit['url']}")
+        for i, alert in enumerate(new_alerts, 1):
+            parts.append(f"### {i}. {alert['source']}")
+            parts.append(f"**新增触发**: {', '.join(alert['new_keywords'])}")
+            parts.append(f"**当前命中**: {', '.join(alert['all_hits'])}")
+            parts.append(f"**链接**: {alert['url']}")
             parts.append("")
 
         content = "\n".join(parts)
-        push_url = new_hits[0]["url"]
+        push_url = new_alerts[0]["url"]
 
         send_wxpusher(app_token, uids, title, content, push_url)
 
@@ -174,7 +180,7 @@ def run_one_round(config, state, app_token, uid):
             state["mode"] = "preheat"
             print(f"\n  ⚡ 进入预热模式（后续频率加密）")
 
-    return new_hits
+    return new_alerts
 
 
 def main():
@@ -183,11 +189,9 @@ def main():
     print(f"  时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    # 读取配置和状态
     config = load_config()
     state = load_state()
 
-    # 从环境变量读取 wxpusher 密钥
     app_token = os.environ.get("WXPUSHER_APP_TOKEN", "").strip()
     uid = os.environ.get("WXPUSHER_UID", "").strip()
 
@@ -198,12 +202,14 @@ def main():
     print(f"\n  当前模式: {state['mode']}")
     print(f"  上次运行: {state.get('last_run', '首次运行')}")
     print(f"  监控源数量: {len(config['sources'])}")
-    print(f"  关键词: {', '.join(config['keywords'])}")
+
+    for s in config["sources"]:
+        print(f"    - {s['name']}: {len(s['keywords'])} 个关键词")
 
     # 根据模式决定跑几轮
     if state["mode"] == "preheat":
         rounds = 3
-        interval = 300  # 5分钟 = 300秒
+        interval = 300  # 5分钟
     else:
         rounds = 1
         interval = 0
@@ -217,13 +223,12 @@ def main():
         state["last_run"] = datetime.now().isoformat()
         save_state(state)
 
-        # 不是最后一轮，等待
         if i < rounds - 1 and interval > 0:
             print(f"\n  ⏳ 等待 {interval // 60} 分钟后进行下一轮...")
             time.sleep(interval)
 
     print(f"\n{'=' * 60}")
-    print(f"  本次监控完成，下次自动运行由 GitHub Actions 调度")
+    print(f"  本次监控完成")
     print(f"{'=' * 60}")
 
 
