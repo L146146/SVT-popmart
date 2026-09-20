@@ -120,28 +120,35 @@ def run_one_round(config, state, app_token, uid):
             continue
 
         current_hits = check_keywords(content, keywords)
+        current_hits_sorted = sorted(current_hits)
 
         prev = state["last_results"].get(name, {})
-        prev_hits = prev.get("hits", [])
+        prev_hits = sorted(prev.get("hits", []))
         is_first = name not in state["last_results"]
 
-        # 找出新增的关键词（这次命中了，但上次没命中）
-        new_keywords = [kw for kw in current_hits if kw not in prev_hits]
-
-        # 判断是否需要推送
+        # 判断是否需要推送：命中集合发生变化
         should_alert = False
         alert_reason = ""
 
         if is_first and not alert_on_first:
             # 首次运行且不提醒首次命中 → 只记录不推送
-            print(f"  - 首次记录基准，命中: {current_hits if current_hits else '无'}（不推送）")
-        elif new_keywords:
-            # 有新增命中的关键词 → 推送
+            print(f"  - 首次记录基准，命中: {', '.join(current_hits) if current_hits else '无'}（不推送）")
+        elif current_hits_sorted != prev_hits:
+            # 命中集合发生变化 → 推送
+            added = [kw for kw in current_hits if kw not in prev_hits]
+            removed = [kw for kw in prev_hits if kw not in current_hits]
+
+            changes = []
+            if added:
+                changes.append(f"新增: {', '.join(added)}")
+            if removed:
+                changes.append(f"消失: {', '.join(removed)}")
+
             should_alert = True
-            alert_reason = f"新增命中: {', '.join(new_keywords)}"
-            print(f"  🎯 {alert_reason}")
+            alert_reason = "；".join(changes)
+            print(f"  🎯 状态变化: {alert_reason}")
         elif current_hits:
-            print(f"  ✓ 已命中，无新增关键词（跳过）")
+            print(f"  ✓ 状态无变化（{', '.join(current_hits)}）")
         else:
             print(f"  - 未命中关键词")
 
@@ -149,7 +156,7 @@ def run_one_round(config, state, app_token, uid):
             new_alerts.append({
                 "source": name,
                 "url": url,
-                "new_keywords": new_keywords,
+                "reason": alert_reason,
                 "all_hits": current_hits,
             })
 
@@ -161,12 +168,12 @@ def run_one_round(config, state, app_token, uid):
 
     # 有新警报 → 推送
     if new_alerts:
-        title = "🔔 SEVENTEEN × 泡泡玛特 监控警报！"
+        title = "🔔 SEVENTEEN × 泡泡玛特 状态变化！"
         parts = []
         for i, alert in enumerate(new_alerts, 1):
             parts.append(f"### {i}. {alert['source']}")
-            parts.append(f"**新增触发**: {', '.join(alert['new_keywords'])}")
-            parts.append(f"**当前命中**: {', '.join(alert['all_hits'])}")
+            parts.append(f"**变化**: {alert['reason']}")
+            parts.append(f"**当前状态**: {', '.join(alert['all_hits']) if alert['all_hits'] else '无命中'}")
             parts.append(f"**链接**: {alert['url']}")
             parts.append("")
 
