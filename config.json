@@ -1,26 +1,25 @@
 {
-  "keywords": [
-    "SEVENTEEN",
-    "MINITEEN",
-    "세븐틴",
-    "十七"
-  ],
   "sources": [
     {
       "name": "泡泡玛特中国官网",
-      "url": "https://www.popmart.com.cn"
+      "url": "https://www.popmart.com.cn",
+      "keywords": ["SEVENTEEN", "MINITEEN", "세븐틴"]
     },
     {
       "name": "泡泡玛特海外新品页",
-      "url": "https://m.popmart.com/mo/new-arrivals"
+      "url": "https://m.popmart.com/mo/new-arrivals",
+      "keywords": ["SEVENTEEN", "MINITEEN", "세븐틴"]
     },
     {
       "name": "Weverse SEVENTEEN 公告",
-      "url": "https://weverse.io/seventeen/notice"
+      "url": "https://weverse.io/seventeen/notice",
+      "keywords": ["SEVENTEEN", "MINITEEN", "세븐틴"]
     },
     {
-      "name": "泡泡玛特全球官网",
-      "url": "https://www.popmart.com"
+      "name": "京东 MINITEEN 商品页",
+      "url": "https://item.m.jd.com/product/10235021755609.html",
+      "keywords": ["立即购买", "马上抢", "抢购", "加入购物车", "到货通知", "已售完", "售罄"],
+      "alert_on_first_hit": false
     }
   ]
 }
